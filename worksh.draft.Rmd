@@ -1,0 +1,320 @@
+---
+title: "Workshop"
+author: "Sozontov"
+date: "10 05 2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide 
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) 
+library(leaflet)
+library(tidyverse)
+theme_set(theme_bw())
+load(file = "O://!_R10/export.RData")
+```
+
+## Форматирование
+
+Это R Markdown документ, созданный для демонстрации возможностей этого инструмента в [прямом эфире](https://www.youtube.com/channel/UCsZrSYPA0nu1ing4Lszo-sg) на моём канале. 
+Здесь возможны практически **любые** способы *форматирования* документа. 
+
+* Заголовки
+
+* Таблицы
+
+* Графики
+
+* Ссылки
+
+* Иллюстрации
+
+* Карты
+
+* Интерактивное содержимое
+
+* Обновляемое содержимое 
+
+* Вычисления прямо в тексте. Например, читаемая вами версия документа сформирована в `r substr(Sys.time(), 11, 16)` по пермскому времени *(`r format(Sys.Date(), "%d %B %Y")`)*
+
+* И многое другое
+
+## Вычисления
+
+```{r v1}
+uch <- gsheet::gsheet2tbl("https://docs.google.com/spreadsheets/d/1OUDIpKjabuVprtJ8HkTFZc3oThBbnUjVkHo5XYRQOvM")
+select(uch, `Имя` = 1, `Возраст` = 2, `Город` = 4, `Любимое животное` = 3) %>% 
+  formattable::formattable()
+```
+
+Средний возраст участников: `r mean(uch$age)` (от `r min(uch$age)` до `r max(uch$age)`)
+
+Больше всего подключилось из: `r names(sort(table(uch$city), decreasing = TRUE))[1]`
+
+Самое популярное любимое животное: `r names(sort(table(uch$favor.animals), decreasing = TRUE))[1]` 
+
+Самое популярное животное в самом популярном городе: `r names(sort(table(uch$favor.animals[uch$city == names(sort(table(uch$city), decreasing = TRUE))[1]]), decreasing = TRUE))[1]`
+
+Результаты всех прочих вычислений взяты в готовом виде из предыдущего блока.
+
+## Карты
+
+### Карты с leaflet
+
+```{r}
+uch %>% leaflet(data = .) %>% 
+    addTiles() %>%
+    addMarkers(label = ~name, popup = ~city)
+```
+
+### Карты с ggplot2 {.tabset}
+
+#### Загрузка подложки
+
+```{r}
+library(rgdal)
+base <- list(adm    = readOGR("O://!_R10/shp/adm.shp"), 
+             lakes  = readOGR("O://!_R10/shp/lakes.shp")
+             ) %>% lapply(function(a){
+    rgeos::gSimplify(a, tol = 0.05, topologyPreserve = TRUE)
+  }) 
+mp <- ggplot() + 
+  geom_polygon(data = base$adm, mapping = aes(x = long, y  = lat, group = group), 
+               fill = "green", color = "black", alpha = 0.2) + 
+  geom_polygon(data = base$lakes, mapping = aes(x = long, y  = lat, group = group), 
+               fill = "blue", color = "black", alpha = 0.2) + 
+  coord_cartesian(xlim = c(30,66), ylim = c(50, 65)) +
+  labs(x = "", y = "")
+```
+
+#### Случайные точки
+
+```{r}
+mp + 
+  geom_point(mapping = aes(x = x, y = y, color = color), 
+             data = data.frame(x = rnorm(100, 49, 5), 
+                               y = rnorm(100, 57.5, 3), 
+                               color = sample(c("red", "blue", "yellow", "black", "green"),
+                                              100, replace = TRUE)))+
+  theme(legend.position = "none")
+#plotly::ggplotly(a)
+```
+
+#### Участники
+
+```{r}
+mp2 <- mp + geom_point(mapping = aes(x = lon, y = lat, fill = favor.animals), 
+                data = uch, color = "black", shape = 21, size = 2) # + theme(legend.position = "bottom")
+mp2
+```
+
+#### Plotly
+
+```{r}
+plotly::ggplotly(mp2)
+```
+
+## Графики
+
+### Рисующие геомы {.tabset}
+
+#### Точки
+
+```{r}
+ggplot(div, aes(x = nspec, y = nsp)) + # color = site
+  geom_point() + 
+  labs(x = "Кол-во видов растений", y = "Кол-во видов пауков")
+```
+
+#### Линии
+
+```{r}
+div %>% 
+  group_by(nspec) %>% 
+  summarise(nsp = mean(nsp)) %>% 
+  ggplot(aes(x = nspec, y = nsp)) + # color = site
+  geom_line() + 
+  labs(x = "Кол-во видов растений", y = "Кол-во видов пауков")
+```
+
+#### Линии с доверительными интервалами
+
+```{r}
+div %>% 
+  group_by(nspec) %>% 
+  summarise(meansp = mean(nsp), ci = sd(nsp)*1.96) %>% 
+  ggplot(aes(x = nspec, y = meansp, ymin = meansp - ci, ymax = meansp + ci)) + # color = site
+  geom_ribbon(color = "darkgrey", fill = "lightgrey") +
+  geom_line(linetype = "dashed") + 
+  labs(x = "Кол-во видов растений", y = "Кол-во видов пауков")
+```
+
+#### Линия тренда со сглаживанием
+
+```{r}
+fd %>% 
+  ggplot(aes(x = nbsp, y = FEve)) + 
+  geom_point() +
+  geom_smooth()
+```
+
+#### Линия тренда со сглаживанием и точки с рассеянием
+
+```{r}
+fd %>% 
+  ggplot(aes(x = nbsp, y = FRic)) + 
+  geom_jitter(height = 0, width = 0.4, shape = 1, color = "black", alpha = 0.8) + 
+  geom_smooth()
+```
+
+#### Подписи и надписи
+
+```{r}
+fd %>% 
+  ggplot(aes(x = nbsp, y = FRic)) + 
+  geom_jitter(height = 0, width = 0.4, shape = 1, color = "black", alpha = 0.8) + 
+  geom_smooth() + 
+  geom_label(aes(x = x, y = y, label = lab), data = #text
+               data.frame(x = c(4, 11), y = c(0.175, 0.025), 
+                          lab = c("Vupsen", "Pupsen")))
+
+```
+
+#### Столбчатые диаграммы 1
+
+```{r}
+rar %>% filter(m == "m0.001") %>% 
+  ggplot(aes(x = site, y = qD)) + 
+  geom_col()
+```
+
+####  Столбчатые диаграммы 2
+
+```{r}
+rar %>% 
+  filter(m == "m0.001", site != "K01S") %>% 
+  ggplot(aes(x = site, y = qD, fill = year)) + 
+  geom_col(position = "dodge")
+```
+
+#### Столбчатые диаграммы 3
+
+```{r}
+left_join(long, tr, by = "taxa") %>% 
+  select(site, 9:11, num) %>% 
+  pivot_longer(names_to = "str", values_to = "val", -c("site", "num")) %>% 
+  filter(num > 0, val > 0) %>% 
+  group_by(site, str) %>% 
+  summarise(num = sum(num), .groups = "drop") %>% 
+  mutate(str = substr(str, 9, nchar(str)-3)) %>% 
+  ggplot(aes(x = site, y = num, fill = str)) + 
+  geom_col(position = "fill", color = "black") + 
+  labs(x = "", y = "", title = "Соотношение ярусных групп на участках")
+```
+
+#### Боксплоты готовые
+
+```{r}
+left_join(long, tr, by = "taxa") %>% 
+  select(site, 9:11, num) %>% 
+  pivot_longer(names_to = "str", values_to = "val", -c("site", "num")) %>% 
+  filter(num > 0, val > 0) %>% 
+  # group_by(site, str) %>% 
+  # summarise(num = sum(num), .groups = "drop") %>% 
+  mutate(str = substr(str, 9, nchar(str)-3)) %>% 
+  ggplot(aes(x = site, y = num, fill = str)) + 
+  geom_boxplot(color = "black") + 
+  labs(x = "", y = "", title = "Соотношение ярусных групп на участках")
+```
+
+### Модифицирующие геомы {.tabset}
+
+#### Логарифмирование осей
+
+```{r}
+left_join(long, tr, by = "taxa") %>% 
+  select(site, 9:11, num) %>% 
+  pivot_longer(names_to = "str", values_to = "val", -c("site", "num")) %>% 
+  filter(num > 0, val > 0) %>% 
+  # group_by(site, str) %>% 
+  # summarise(num = sum(num), .groups = "drop") %>% 
+  mutate(str = substr(str, 9, nchar(str)-3)) %>% 
+  ggplot(aes(x = site, y = num, fill = str)) + 
+  geom_boxplot(color = "black") + 
+  labs(x = "", y = "", title = "Соотношение ярусных групп на участках") + 
+  scale_y_log10()
+```
+
+#### Кадрирование
+
+```{r}
+fd %>% 
+  ggplot(aes(x = nbsp, y = FRic)) + 
+  geom_jitter(height = 0, width = 0.4, shape = 1, color = "black", alpha = 0.8) + 
+  geom_smooth() + 
+  scale_x_continuous(limits = c(5, 12))
+```
+
+#### Вращение
+
+```{r}
+left_join(long, tr, by = "taxa") %>% 
+  select(site, 9:11, num) %>% 
+  pivot_longer(names_to = "str", values_to = "val", -c("site", "num")) %>% 
+  filter(num > 0, val > 0) %>% 
+  group_by(site, str) %>% 
+  summarise(num = sum(num), .groups = "drop") %>% 
+  mutate(str = substr(str, 9, nchar(str)-3)) %>% 
+  ggplot(aes(x = site, y = num, fill = str)) + 
+  geom_col(position = "fill", color = "black") + 
+  labs(x = "", y = "", title = "Соотношение ярусных групп на участках") + 
+  coord_flip() + 
+  theme(legend.position = "bottom")
+```
+
+
+#### Управление формой и цветом
+
+```{r}
+d <- div %>% 
+  mutate(year =  as.factor(year)) %>% 
+  ggplot(aes(x = nspec, y = nsp, shape = season, 
+                fill = year)) + # color = site
+  geom_point(size = 2, alpha = 0.8) + 
+  labs(x = "Кол-во видов растений", y = "Кол-во видов пауков") + 
+  scale_shape_manual(values = c(23, 21)) + 
+  scale_fill_manual(values = c("red", "green"))
+```
+
+#### Сетка из одного фактора
+
+```{r}
+rar %>% 
+  filter(m == "m0.001") %>% 
+  ggplot(aes(x = site, y = qD, fill = site)) + 
+  geom_boxplot()
+rar %>% 
+  ggplot(aes(x = site, y = qD, fill = site)) + 
+  geom_boxplot() + 
+  facet_wrap(~m) + 
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+#### Сетка из двух факторов
+
+```{r}
+fd %>% 
+  mutate(year = as.character(year)) %>% 
+  select(-id, -qual.FRic, -sing.sp) %>% 
+  pivot_longer(names_to = "ind", values_to = "fd", -c("year", "site")) %>% 
+  filter(site != "K01S", ind != "nbsp") %>% 
+  ggplot(aes(x = site, fill = site, y = fd)) + 
+  geom_boxplot() + 
+  facet_grid(cols = vars(year), rows = vars(ind), scales = "free") + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(x = "", y = "")
+```
