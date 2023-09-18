@@ -1,0 +1,606 @@
+---
+title: "RMarkdown example"
+author: "Sozontov"
+date: "`r Sys.Date()`"
+output: 
+    html_document: 
+        toc: true
+        toc_depth: 2
+        toc_float: true
+        code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Data load
+
+```{r packages}
+suppressMessages(library(tidyverse))
+suppressMessages(library(vegan))
+library(dendextend)
+library(iNEXT)
+
+theme_set(theme_bw() + theme(
+      text = element_text(family = "serif", size = 15),
+      legend.position = "bottom")
+      )
+```
+
+## Habitats quaility
+
+```{r quality.data}
+env <- readxl::read_xlsx("data/Quality.xlsx")
+anim <- env %>% 
+  select(14:17, 2:13) %>% 
+  group_by(year, zone ,    km , line) %>% 
+  summarise_all(sum) %>% 
+  ungroup()
+env <- env %>% 
+  select(14:17, 19:ncol(.)) %>% 
+  group_by(year, zone ,    km , line) %>% 
+  summarise_all(mean) %>% 
+  ungroup()
+```
+
+```{r quality.count}
+tmp <- expand_grid(x1 = 5:ncol(env), 
+                   x2 = 5:ncol(env)) #%>%   filter(x1 > x2)
+env2 <- list()
+for(i in 1:nrow(tmp)) { 
+  env2[[i]] <- cbind(env[,tmp$x1[i]], env[,tmp$x2[i]])
+}
+env2 <- env2 %>% lapply(function(a){b <- cor.test(a[,1], a[,2])
+          paste(c(b$estimate, b$p.value, 
+                colnames(a)[1], colnames(a)[2]), 
+                collapse = "__")
+  }
+  ) %>%  map_chr(c) 
+env2 <- strsplit(x = env2, "__") %>% 
+  lapply(., function(a){matrix(a, ncol = 4)}) %>% 
+  do.call(rbind, .)
+env2 <- tibble(est = as.numeric(env2[,1]), 
+               pval = as.numeric(env2[,2]), 
+               x1 = env2[,3], x2 = env2[,4]) %>% 
+  mutate(est = case_when(x1 != x2 ~ est), 
+         pval2 = case_when(pval < 0.001 & !is.na(est) ~ paste0(round(est, 2), "***"), 
+                           pval < 0.01 & !is.na(est) ~ paste0(round(est, 2), "**"), 
+                           pval < 0.05 & !is.na(est) ~ paste0(round(est, 2), "*"))) 
+```
+
+```{r quality.plot}
+ggplot(env2, aes(x=x1, y=x2, fill = est)) + 
+  geom_tile(color = "black") + 
+  geom_text(aes(x = x1, y = x2, label = pval2), size = 2.5, 
+            na.rm = TRUE, angle = 30) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+    midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+  coord_fixed() + 
+  labs(x = NULL, y = NULL)
+```
+
+
+## Spiders near copper-smelter
+
+```{r herpetob.report2022.1}
+load("data/2022-12-17_inext.RData")
+rar.yz <- rar.yz %>% map(~mutate(.x, 
+                       zone = factor(zone, levels = c("фоновая", "буферная", "импактная")), 
+                       zone = fct_relabel(zone, ~paste0(.x, " зона")))
+               )
+
+long <- readxl::read_excel("data/Carabidae_12.12.2022.xlsx", 
+    sheet = "main_data", range = "A1:H887") %>% 
+    mutate(tur = factor(tur), 
+           zone = case_when(zone == "fon" ~ "фоновая", 
+                                   zone == "bufer" ~ "буферная", 
+                                   TRUE ~ "импактная"),
+           zone = factor(zone, levels = c("фоновая", "буферная", "импактная")))
+wide <- long %>% 
+      select(-num) %>% 
+      pivot_wider(names_from = taxa, values_from = abu, 
+                  values_fn = sum, values_fill = 0) %>% 
+      mutate(id = paste0(year, tur, site, plot), .before = year) %>% 
+      select(-no_insects)
+tr <- readxl::read_excel("data/Carabidae_12.12.2022.xlsx", 
+    sheet = "traits") %>% 
+    select(taxa, size_1, stratum.ext:wings)
+
+div <- tibble(wide[,2:6], 
+    abu = apply(wide[,7:ncol(wide)], 1, sum),
+    nsp = apply(wide[,7:ncol(wide)], 1, function(a){length(a[a>0])}),
+    shan= vegan::diversity(wide[,6:ncol(wide)], 
+                           MARGIN = 1, index = "shannon", base = exp(1)), 
+    dom = apply(wide[,7:ncol(wide)], 1, function(a){a <- a/sum(a); return(max(a))})
+    ) %>% 
+    mutate(km = as.numeric(substr(site, 2,3)), .before = plot) %>% 
+      left_join(mutate(rar.yzstp, 
+                       year = as.numeric(year), 
+                       plot = as.numeric(plot)), 
+                by = c("year", "tur", "zone", "site", "plot")) %>% 
+      mutate(d50 = case_when(is.na(d50) ~ 0, TRUE ~ d50))
+```
+
+
+```{r h1}
+rar.ytz$line %>% 
+      mutate(year = as.factor(year) ) %>% 
+      ggplot(aes(x = m, y = qD, ymin = qD.LCL, ymax = qD.UCL, color = year, fill = year)) + 
+    geom_ribbon(alpha = 0.1, linetype = "blank") +
+    geom_line(linewidth = 1, mapping = aes(linetype = Method)) +
+    geom_point(data = mutate(rar.ytz$point, 
+                             year = as.factor(year)),
+                   shape = 22, size = 2, color = "black") +
+    geom_label(data = mutate(filter(rar.ytz$line, m == 1600),
+                             year = as.factor(year)),
+               mapping = aes(x = 1200, y = qD, label = year), color = "black") +
+    facet_grid(cols = vars(zone), rows = vars(tur), scales = "free") + 
+    scale_linetype_manual(values = c("dotted", "solid")) +
+      scale_x_continuous(limits = c(0, 1600)) +
+    guides(linetype = "none") +
+    labs(x = "Особей", y = "Видов", subtitle = "Разрежение/экстраполяция", 
+         fill = "Год", color = "Год")
+
+```
+
+```{r}
+D <- c("abu", "Динамическая плотность", 
+"nsp", "Количество видов",
+"shan", "Индекс Шеннона", 
+"dom", "Индекс доминирования",
+"d50", "Количество видов на 50 особей",
+"size1_small", "мелкие виды",
+"size1_medium", "средние виды", 
+"size1_big", "крупные виды", 
+"class_zoophaga", "зоофаги",
+"class_myxophaga", "миксофаги", 
+"habitats_meadow", "луговые", 
+"habitats_forest", "лесные", 
+"habitats_forest.meadow", "эвритопные", 
+"stratum_strato", "стратобионты",  #"LS",
+"stratum_geohorto", "хортобионты",  # "HSD",
+"stratum_epigeo", "эпигеобионты",   #"SS",
+"stratum_stratohorto", "хортобионты",    #"HSD",
+"fenol_all.seasons", "эврихронные", 
+"humid_xero", "ксерофилы",
+"humid_meso", "мезофилы", 
+"humid_hygro", "гигрофилы", 
+"wings_macropt", "высокомобильные", 
+"wings_brachypter", "немобильные",
+"wings_dimorph", "слабомобильные") %>% 
+    matrix(ncol = 2, byrow = TRUE) %>% 
+    as.data.frame() %>% 
+    rename(eng2 = 1, rus = 2) %>% 
+    separate(eng2, into = c("eng1", "eng2"), sep = "_")
+
+dens <- function(x, y = 0.05){ 
+      sh <- data.frame(
+            x = 0, 
+            y = y, 
+            label = paste0("p.val = ", round(shapiro.test(x)$p.value, 3)))
+      ggplot(data.frame(x), aes(x)) + 
+            geom_density() +
+            geom_label(mapping = aes(x, y, label = label), data = sh) +
+            labs(x = "residuals", y = NULL)
+      }
+join <- function(a){ 
+   tr %>% 
+      select(taxa, type = {{a}}) %>% 
+      left_join(long, ., by = "taxa") %>%
+      filter(taxa != "no_insects") %>%       
+      left_join(rename(D, type = eng2), by = "type") %>% ##
+      select(-type, -eng1) %>% ##
+      group_by(year, tur, site, plot, rus) %>% ##
+      summarise(abu = sum(abu), .groups = "drop") %>% 
+      # mutate(type = paste0(a, "_", rus)) %>% 
+      pivot_wider(names_from = rus, values_from = abu, values_fill = 0)
+}
+
+div <- div %>% 
+      left_join(join("size_1"), by = c("year", "tur", "site", "plot")) %>% 
+      left_join(join("class"), by = c("year", "tur", "site", "plot")) %>% 
+      left_join(join("habitats"), by = c("year", "tur", "site", "plot")) %>% #
+      left_join(join("stratum"), by = c("year", "tur", "site", "plot")) %>% 
+      left_join(join("humid"), by = c("year", "tur", "site", "plot")) %>% 
+      left_join(join("wings"), by = c("year", "tur", "site", "plot"))
+
+ES <- list()
+ES$by_tur <- div %>% 
+    # select(abu:wings_dimorph) %>% 
+    select(abu:`слабомобильные`) %>% 
+    colnames() %>% 
+    map(function(V = "abu", df = div){
+    df %>% 
+        rename(VV = {{V}}) %>% 
+        split(paste0(df$year, df$tur)) %>% 
+        lapply(FUN = function(a){
+            rbind(
+            SingleCaseES::LRRi(a$VV[a$zone == "фоновая"], a$VV[a$zone == "буферная"]), 
+            SingleCaseES::LRRi(a$VV[a$zone == "фоновая"], a$VV[a$zone == "импактная"])) %>% 
+                mutate(zone = c("буферная", "импактная"), type = V)
+            }) %>% 
+        map_df(rbind, .id = "tur") %>% 
+        mutate(year = substr(tur, 1, 4), tur = substr(tur, 5, 5), .before = 1)
+}) %>% 
+    map_df(rbind) %>% 
+    as_tibble()
+
+ES$year_only <- div %>% 
+    select(abu:`слабомобильные`) %>% 
+    #select(abu:wings_dimorph) %>% 
+    colnames() %>% 
+    map(function(V, df = div){
+      # map(function(V = "abu", df = div){
+    df %>% 
+        rename(VV = {{V}}) %>% 
+        split(paste0(df$year)) %>% 
+        lapply(FUN = function(a){
+            rbind(
+            SingleCaseES::LRRi(a$VV[a$zone == "фоновая"], a$VV[a$zone == "буферная"]), 
+            SingleCaseES::LRRi(a$VV[a$zone == "фоновая"], a$VV[a$zone == "импактная"])) %>% 
+                mutate(zone = c("буферная", "импактная"), type = V)
+            }) %>% 
+        map_df(rbind, .id = "year")  
+        # mutate(year = substr(tur, 1, 4), tur = substr(tur, 5, 5), .before = 1)
+}) %>% 
+    map_df(rbind) %>% 
+    as_tibble()
+
+ES <- ES %>% map(~mutate(.x, type2 = case_when(
+      type == "abu" ~ "Динамическая плотность",
+      type == "nsp" ~ "Количество видов",
+      type == "shan" ~ "Индекс Шеннона",
+      type == "dom" ~ "Индекс доминирования",
+      type == "d50" ~ "Количество видов на 50 особей", 
+      TRUE ~ type)))
+```
+
+```{r}
+ES$year_only %>% 
+      filter(type %in% colnames(select(div, abu:d50))) %>% 
+    mutate(xx = as.vector(sapply(4:0*3, function(a)(rep(1:2, each = 2) + a))), 
+           zone = paste0(zone, " зона")) %>%  
+    ggplot(aes(x = xx, y = Est, ymin = CI_lower, ymax = CI_upper, 
+        fill = year, shape = year)) +
+    geom_vline(xintercept = 1:4*3, color = "grey", alpha = 0.5) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_pointrange() + 
+    scale_shape_manual(values = c(25, 22)) +
+    scale_x_continuous(breaks = (1:5*3)-1.5, 
+                       labels = unique(ES$by_tur$type2)[5:1]) +
+        # labels = colnames(select(div, abu:d50))[5:1] ) +
+    facet_wrap(~zone, scales = "free_x") + 
+    coord_flip() + 
+    theme(panel.grid = element_blank()) + 
+    labs(x = NULL, y = NULL, 
+         fill = "Год", shape = "Год", 
+         subtitle = "Туры усреднены")
+
+```
+
+```{r}
+wide <- wide %>% 
+      filter(apply(wide[,6:ncol(wide)], 1, sum) > 0)
+pcoa2 <- wide %>% 
+    column_to_rownames("id") %>% 
+    select(-1:-4) %>% 
+    vegan::vegdist() %>% 
+    ape::pcoa()
+eig2 <- pcoa2$values$Eigenvalues
+if(min(eig2) < 0) {eig2 <- eig2 + abs(min(eig2))}
+eig2 <- round(eig2/sum(eig2)*100)
+
+
+pcoa2$vectors[,1:2] %>%     
+    as.data.frame() %>% 
+    rownames_to_column("id") %>% 
+    mutate(year = as.numeric(substr(id, 1, 4)), 
+           tur = factor(substr(id, 5, 5)),
+           site = substr(id, 6, 9), 
+           plot = as.numeric(substr(id, 10, 10))) %>% 
+    as_tibble() %>% 
+    left_join(select(div, year, tur, site, plot, zone), 
+              by = c("year", "tur", "site", "plot")) %>% 
+      mutate(Axis.1 = Axis.1 * -1, 
+             tur = fct_relabel(tur, ~paste0("Тур ", .x))) %>% 
+      ggplot(aes(x = Axis.1, y = Axis.2, fill = zone, shape = zone, size = tur)) +
+      geom_point(color = "black") + 
+      stat_ellipse(mapping = aes(color = zone), linewidth = 0.5, linetype = "dashed") +
+      facet_grid(cols = vars(year), rows = vars(tur)) +
+      scale_size_manual(values = c(2,2)) +
+      scale_shape_manual(values = c(21, 22, 23, 25)) + 
+      scale_color_manual(values = c("green", "orange", "red", "brown")) + 
+      scale_fill_manual(values = c("green", "orange", "red", "brown")) + 
+      labs(subtitle = "По динамической плотности", 
+           x = paste0("Ось 1 (", eig2[1], " %)"), 
+           y = paste0("Ось 2 (", eig2[2], " %)"), 
+           fill = "Зона", color = "Зона", shape = "Зона") +
+      ggplot2::guides(size = "none", color = "none")
+
+```
+
+```{r sp.function}
+spiderchart <- function(df = NULL, 
+               top = NULL, 
+               subdivisions = 4, # manual
+               zero_shift = 15, # manual
+               scale_shist = -5, # manual
+               label_shift = 5, # manual
+               label_size = 3.5, # manual
+               webtype = "dotted", # manual
+               flexure = 0.2, #manual
+               need_label = TRUE, #manual
+               need_scale = TRUE, # manual
+               need_web = TRUE # manual
+) {
+  # require(crayon)
+  if(is.null(df))
+  {
+    cat(crayon::red("There is no data!
+"))
+    cat(crayon::green("Do you need an example?
+"))
+    df <- tibble::tibble(id = c("A", "B", "C"), 
+                         Z =      c(85, 25, 25), 
+                         M =      c(25, 85, 25), 
+                         big =    c(25, 25, 85), 
+                         med =    c(85, 25, 25), 
+                         sml =    c(25, 85, 25), 
+                         runing = c(25, 25, 85), 
+                         jumping= c(25, 85, 25))
+    df
+  } else {
+    require(tidyverse)
+    ID = max(which(!sapply(df, is.numeric)))
+    N = ncol(df) - ID
+    AL = 2*pi/(N)
+    if(is.null(top)) {top = ceiling(max(df[,-c(1:ID)])/10)*10} # but can be manual
+    
+    
+    df <- df %>% 
+      rename(id = ID) %>% 
+      pivot_longer(names_to = "lab", values_to = "L", -all_of(c(1:ID))) %>% 
+      mutate(i = 0:(nrow(.)-1), 
+             M = L + max(L)/3, 
+             L = L + zero_shift,
+             x = L*cos(pi/2-AL*i), 
+             y = L*sin(pi/2-AL*i)) 
+    
+    G1 <- data.frame( # Web-Grid
+      x1 = rep(seq(0, top, by = top/subdivisions) + zero_shift, each = N) * cos(pi/2-AL*rep(c(1:N), subdivisions+1)),
+      y1 = rep(seq(0, top, by = top/subdivisions) + zero_shift, each = N) * sin(pi/2-AL*rep(c(1:N), subdivisions+1)), 
+      x2 = rep(seq(0, top, by = top/subdivisions) + zero_shift, each = N) * cos(pi/2-AL*rep(c(2:N, 1), subdivisions+1)),
+      y2 = rep(seq(0, top, by = top/subdivisions) + zero_shift, each = N) * sin(pi/2-AL*rep(c(2:N, 1), subdivisions+1))
+    )
+    G2 <- data.frame( # rays
+      x1 = top*cos(pi/2-AL*1:N),
+      y1 = top*sin(pi/2-AL*1:N), 
+      x2 = zero_shift*cos(pi/2-AL*1:N),
+      y2 = zero_shift*sin(pi/2-AL*1:N)
+    )
+    G3 <- data.frame(
+      x = -5, 
+      L = seq(0, top, by = top/subdivisions),
+      y = seq(0, top, by = top/subdivisions) + zero_shift)
+    G4 <- data.frame(
+      lb = unique(df$lab),
+      x = (max(df$L) + zero_shift + label_shift) * cos(pi/2-AL*0:(N-1)), 
+      y = (max(df$L) + zero_shift + label_shift) * sin(pi/2-AL*0:(N-1))
+    )
+    
+    ggplot() + 
+      {if(need_web) # web: segments
+        geom_curve(aes(x1, y1, xend = x2, yend = y2), data = G1, curvature = flexure, linetype = webtype)
+      } +
+      {if(need_web)  # web: radial rays
+        geom_segment(aes(x1, y1, xend = x2, yend = y2), data = G2, linetype = webtype)
+      } + 
+      {if(need_scale) # scale
+        geom_text(aes(x, y, label = L), data = G3)
+      } +
+      geom_polygon(aes(x, y, color = id, fill = id), data = df, alpha = 0.5) + # polygons
+      geom_point(aes(x, y, color = id, fill = id), data = df) + # peaks
+      {if(need_label) # peak labels
+        geom_text(aes(x, y, label = lb), data = G4, size = label_size)
+      } + 
+      coord_equal() + 
+      theme_void() 
+  }
+}
+```
+
+```{r sp.plot}
+rio::import("data/table_spidercharts.xlsx") %>% 
+mutate(id = as_factor(id)) %>%  
+spiderchart(label_shift = -10)+ 
+facet_wrap(~year) + 
+theme_classic() + 
+labs(title = "Changes in ecological structure of spiders' communities",  
+       x = NULL, y = NULL) + 
+  guides(fill = guide_legend(title="Biotop"), 
+         color= guide_legend(title="Biotop")) + 
+  theme(legend.position = "bottom",  
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        axis.line = element_blank(), 
+        axis.text = element_blank(),  
+        axis.ticks = element_blank()) 
+
+```
+
+
+## Caspian litoral mites
+
+### Rarefication{.tabset}
+
+```{r Kasp.counts.2022}
+taxa <- readxl::read_xlsx("data/Caspian data_15.09.2022_SA.xlsx", sheet = "taxa")
+labs <- readxl::read_xlsx("data/Caspian data_15.09.2022_SA.xlsx", sheet = "samples")
+df   <- readxl::read_xlsx("data/Caspian data_15.09.2022_SA.xlsx", sheet = "main")
+
+dfw <- df %>% 
+    mutate_all(as.character) %>% #equalize all columns
+    pivot_longer(names_to = "id", values_to = "abu", -sp) %>% 
+    filter(sp != "Oribatida Juvenile instars", abu != "0") %>% 
+    # temporary filter !!!
+    filter(!(id %in% c("SmPbAe1", "SmPbAe2", "SmPbAe3", "SmPbAe4", "SmPbAe5"))) %>% 
+    # temporary filter !!!
+    left_join(select(taxa, sp, order), by = "sp") %>% 
+    filter(order == "Oribatida") %>% 
+    left_join(select(labs, id, distr), by = "id") %>% 
+    filter(distr == "Samoor") %>% 
+    select(-order, -distr) %>% 
+    separate(col = abu, into = c("adu", "juv"), sep = "\\+", fill = "right") %>% 
+    mutate(adu = as.numeric(adu), juv = as.numeric(juv), 
+           juv = case_when(is.na(juv) ~ 0, TRUE ~ juv)) %>% 
+    transmute(sp, id, abu = adu + juv) %>% 
+    pivot_wider(names_from = id, values_from = abu, values_fill = 0)
+
+dfl <- dfw %>% pivot_longer(names_to = "id", values_to = "abu", -sp)
+
+dfl0 <- dfl %>% 
+    mutate(id = substr(id, 1, nchar(id)- 1)) %>% 
+    group_by(sp, id) %>% 
+    summarise(abu = sum(abu), .groups = "drop")
+dfw0 <- dfl0 %>% 
+    pivot_wider(names_from = id, values_from = abu)
+
+labs <- labs %>% 
+    select(id, plants.d, plants.sp) %>% 
+    unite("p", 2:3, sep = ", ") %>% 
+    column_to_rownames("id") %>% 
+    t %>% 
+    as.data.frame() %>%
+    as.list() %>% 
+    lapply(FUN = function(a){ # No.of plants in dominant complex
+        str_split(a, ", ") %>% 
+            .[[1]] %>% 
+            unique %>% 
+            length
+        }) %>% 
+    map_dbl(c) %>% 
+    tibble(id = names(.), dom.comp = .) %>% 
+    left_join(labs, ., by = "id") %>% 
+    mutate(veg = factor(veg, ordered = TRUE), 
+           dom.comp = factor(dom.comp, ordered = TRUE)) 
+
+```
+
+```{r rar.count}
+rar2 <- dfw %>% 
+    select(-sp) %>% 
+    lapply(function(a){sort(a[a>0], decreasing = TRUE)}) %>% 
+    discard(~ length(.x) < 2) %>% 
+    iNEXT::iNEXT(., q = 0, size = seq(5, 150, by = 5), #anchor_A
+                 datatype = "abundance", nboot = 9) %>% # 999
+    pluck("iNextEst", "size_based") %>% 
+    transmute(id = Assemblage, Method, m, qD, qD.LCL, qD.UCL) %>% 
+    as_tibble() %>%
+    left_join(., select(labs, id, coast, skew, soil, 
+        substrate, zone, veg, dom.comp), by = "id")
+obs2 <- rar2 %>% 
+    filter(Method == "Observed") %>% 
+    mutate(r = case_when(m >= 150 ~ "up", m <= 5 ~ "low", TRUE ~ "r"), 
+           m = case_when(m < 5 ~ 5, 
+                         m > 150  ~ 150, 
+                         TRUE ~ m))
+rar2.rar <- rar2 %>% 
+    filter(Method != "Extrapolation", m <= 150, m >= 5) %>%
+    filter(m %in% seq(5, 150, by = 5) | Method == "Observed")
+
+rar2.ext <- rar2 %>% 
+    filter(Method != "Rarefaction", m <= 150, m >= 5) %>%
+    filter(m %in% seq(5, 150, by = 5) | Method == "Observed")
+
+```
+
+#### Coast
+
+```{r rar.viz}
+ggplot(mapping = aes(x = m, y = qD, size = id, color = coast, fill = coast)) + 
+    scale_size_manual(values = rep(1, 59)) +
+    geom_line(data = rar2.ext, linetype = "dotted", alpha = 0.7) +
+    geom_line(data = rar2.rar, alpha = 0.5) + 
+    geom_text(mapping = aes(x = 155, y = qD, label = id), size = 3.5, show.legend=FALSE,
+       data = summarise(group_by(rar2, id, coast), qD = max(qD), .groups = "drop")) +
+    geom_point(mapping = aes(x = m, y = qD, size = id, fill = coast, shape = r), 
+               data = obs2, size = 3, color = "black", show.legend=FALSE,) +
+    scale_shape_manual(values = c(25, 21, 24)) +
+    labs(x = "individuals", y = "number of species") +
+    theme(legend.position = c(0.1, 0.86), 
+          legend.title = element_blank(), 
+          legend.background = element_rect(fill="white",
+                                  linewidth=0.5, linetype="solid", 
+                                  colour ="grey")) + 
+    guides(size = "none", shape = "none")
+```
+
+#### Soil
+
+```{r}
+ggplot(mapping = aes(x = m, y = qD, size = id, color = soil, fill = soil)) + 
+    scale_size_manual(values = rep(1, 59)) +
+    geom_line(data = rar2.ext, linetype = "dotted", alpha = 0.7) +
+    geom_line(data = rar2.rar, alpha = 0.5) + 
+    geom_text(mapping = aes(x = 155, y = qD, label = id), size = 3.5, show.legend=FALSE,
+       data = summarise(group_by(rar2, id, soil), qD = max(qD), .groups = "drop")) +
+    geom_point(mapping = aes(x = m, y = qD, size = id, fill = soil, shape = r), 
+               data = obs2, size = 3, color = "black", show.legend=FALSE,) +
+    scale_shape_manual(values = c(25, 21, 24)) +
+    labs(x = "individuals", y = "number of species") +
+    theme(legend.position = c(0.1, 0.86), 
+          legend.title = element_blank(), 
+          legend.background = element_rect(fill="white",
+                                  linewidth=0.5, linetype="solid", 
+                                  colour ="grey")) + 
+    guides(size = "none", shape = "none")
+
+```
+
+#### Vegetation
+
+```{r}
+ggplot(mapping = aes(x = m, y = qD, size = id, color = veg, fill = veg)) + 
+    scale_size_manual(values = rep(1, 59)) +
+    geom_line(data = rar2.ext, linetype = "dotted", alpha = 0.7) +
+    geom_line(data = rar2.rar, alpha = 0.5) + 
+    geom_text(mapping = aes(x = 155, y = qD, label = id), size = 3.5, show.legend=FALSE,
+       data = summarise(group_by(rar2, id, veg), qD = max(qD), .groups = "drop")) +
+    geom_point(mapping = aes(x = m, y = qD, size = id, fill = veg, shape = r), 
+               data = obs2, size = 3, color = "black", show.legend=FALSE,) +
+    scale_shape_manual(values = c(25, 21, 24)) +
+    labs(x = "individuals", y = "number of species") +
+    theme(legend.position = c(0.1, 0.7), 
+          legend.title = element_blank(), 
+          legend.background = element_rect(fill="white",
+                                  linewidth=0.5, linetype="solid", 
+                                  colour ="grey")) + 
+    guides(size = "none", shape = "none")
+
+```
+
+#### Dominant complex
+
+```{r}
+ggplot(mapping = aes(x = m, y = qD, size = id, color = dom.comp, fill = dom.comp)) + 
+    scale_size_manual(values = rep(1, 59)) +
+    geom_line(data = rar2.ext, linetype = "dotted", alpha = 0.7) +
+    geom_line(data = rar2.rar, alpha = 0.5) + 
+    geom_text(mapping = aes(x = 155, y = qD, label = id), size = 3.5, show.legend=FALSE,
+       data = summarise(group_by(rar2, id, dom.comp), qD = max(qD), .groups = "drop")) +
+    geom_point(mapping = aes(x = m, y = qD, size = id, fill = dom.comp, shape = r), 
+               data = obs2, size = 3, color = "black", show.legend=FALSE,) +
+    scale_shape_manual(values = c(25, 21, 24)) +
+    labs(x = "individuals", y = "number of species") +
+    theme(legend.position = c(0.1, 0.7), 
+          legend.title = element_blank(), 
+          legend.background = element_rect(fill="white",
+                                  linewidth=0.5, linetype="solid", 
+                                  colour ="grey")) + 
+    guides(size = "none", shape = "none")
+
+```
+
