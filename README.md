@@ -1,2 +1,2 @@
 # r_lessons
-Datasets and R functions for ecology and biogeography
+Datasets, slide-shows and R functions for ecology and biogeography learning
