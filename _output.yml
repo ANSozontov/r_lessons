@@ -3,7 +3,7 @@ bookdown::gitbook:
   config:
     toc:
       before: |
-        <li><a href="./">AНачала статистики для биологов</a></li>
+        <li><a href="./">Начала статистики для биологов</a></li>
       after: |
         <li><a href="https://github.com/ANSozontov/r_lessobs" target="blank">Сделано на R, про ,R для изучающих R</a></li>
     edit: https://github.com/ANSozontov/r_lessobs/edit/main/%s
