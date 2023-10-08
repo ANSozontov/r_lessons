@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Глава 4 Статистика описательная | Начала статистики для биологов: Excel? Или лучше R? А может вообще ничего не выбирать, бросить науку и уйти жить в лес?</title>
+  <meta name="description" content="Первый учебник по статистике с сюжетом." />
+  <meta name="generator" content="bookdown 0.35 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Глава 4 Статистика описательная | Начала статистики для биологов: Excel? Или лучше R? А может вообще ничего не выбирать, бросить науку и уйти жить в лес?" />
+  <meta property="og:type" content="book" />
+  <meta property="og:image" content="/cover.png" />
+  <meta property="og:description" content="Первый учебник по статистике с сюжетом." />
+  <meta name="github-repo" content="ANSozontov/r_lessons" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Глава 4 Статистика описательная | Начала статистики для биологов: Excel? Или лучше R? А может вообще ничего не выбирать, бросить науку и уйти жить в лес?" />
+  
+  <meta name="twitter:description" content="Первый учебник по статистике с сюжетом." />
+  <meta name="twitter:image" content="/cover.png" />
+
+<meta name="author" content="Артём Созонтов" />
+
+
+<meta name="date" content="2023-10-08" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="r-а-также-rstudio.html"/>
+<link rel="next" href="статистика-доказательная.html"/>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+<link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
+<link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
+
+
+
+<style type="text/css">
+  
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">AНачала статистики для биологов</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Введение</a>
+<ul>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html#о-чем-эта-книга"><i class="fa fa-check"></i>О чем эта книга</a></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html#как-пользоваться-этой-книгой"><i class="fa fa-check"></i>Как пользоваться этой книгой</a></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html#как-появилась-эта-книга"><i class="fa fa-check"></i>Как появилась эта книга</a></li>
+</ul></li>
+<li class="chapter" data-level="1" data-path="статистика-вокруг-нас.html"><a href="статистика-вокруг-нас.html"><i class="fa fa-check"></i><b>1</b> Статистика вокруг нас</a>
+<ul>
+<li class="chapter" data-level="1.1" data-path="статистика-вокруг-нас.html"><a href="статистика-вокруг-нас.html#снн-статистика-не-нужна"><i class="fa fa-check"></i><b>1.1</b> СНН! (Статистика не нужна!)</a></li>
+<li class="chapter" data-level="1.2" data-path="статистика-вокруг-нас.html"><a href="статистика-вокруг-нас.html#ну-ладно-ладно-все-таки-нужна"><i class="fa fa-check"></i><b>1.2</b> Ну ладно, ладно, все-таки нужна</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="ms-excel-в-производстве-и-в-быту.html"><a href="ms-excel-в-производстве-и-в-быту.html"><i class="fa fa-check"></i><b>2</b> MS Excel в производстве и в быту</a>
+<ul>
+<li class="chapter" data-level="2.1" data-path="ms-excel-в-производстве-и-в-быту.html"><a href="ms-excel-в-производстве-и-в-быту.html#почему-не-гугл-таблцы"><i class="fa fa-check"></i><b>2.1</b> Почему не гугл-таблцы?</a></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="r-а-также-rstudio.html"><a href="r-а-также-rstudio.html"><i class="fa fa-check"></i><b>3</b> R, а также RStudio</a>
+<ul>
+<li class="chapter" data-level="3.1" data-path="r-а-также-rstudio.html"><a href="r-а-также-rstudio.html#загрузка"><i class="fa fa-check"></i><b>3.1</b> Загрузка</a></li>
+<li class="chapter" data-level="3.2" data-path="r-а-также-rstudio.html"><a href="r-а-также-rstudio.html#установка"><i class="fa fa-check"></i><b>3.2</b> Установка</a></li>
+<li class="chapter" data-level="3.3" data-path="r-а-также-rstudio.html"><a href="r-а-также-rstudio.html#интерфейс"><i class="fa fa-check"></i><b>3.3</b> Интерфейс</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="статистика-описательная.html"><a href="статистика-описательная.html"><i class="fa fa-check"></i><b>4</b> Статистика описательная</a>
+<ul>
+<li class="chapter" data-level="4.1" data-path="статистика-описательная.html"><a href="статистика-описательная.html#два-слова-о-совокупностях"><i class="fa fa-check"></i><b>4.1</b> Два слова о совокупностях</a></li>
+<li class="chapter" data-level="4.2" data-path="статистика-описательная.html"><a href="статистика-описательная.html#описываем-объем-и-размах"><i class="fa fa-check"></i><b>4.2</b> Описываем объем и размах</a></li>
+<li class="chapter" data-level="4.3" data-path="статистика-описательная.html"><a href="статистика-описательная.html#описываем-варьирование"><i class="fa fa-check"></i><b>4.3</b> Описываем варьирование</a></li>
+</ul></li>
+<li class="chapter" data-level="5" data-path="статистика-доказательная.html"><a href="статистика-доказательная.html"><i class="fa fa-check"></i><b>5</b> Статистика доказательная</a>
+<ul>
+<li class="chapter" data-level="5.1" data-path="статистика-доказательная.html"><a href="статистика-доказательная.html#какое-распределение-нормальное"><i class="fa fa-check"></i><b>5.1</b> Какое распределение нормальное?</a></li>
+<li class="chapter" data-level="5.2" data-path="статистика-доказательная.html"><a href="статистика-доказательная.html#сравниваем-две-группы-по-одному-признаку"><i class="fa fa-check"></i><b>5.2</b> Сравниваем две группы по одному признаку</a></li>
+<li class="chapter" data-level="5.3" data-path="статистика-доказательная.html"><a href="статистика-доказательная.html#сравниваем-много-групп-по-множеству-признаком"><i class="fa fa-check"></i><b>5.3</b> Сравниваем много групп по множеству признаком</a></li>
+</ul></li>
+<li class="chapter" data-level="6" data-path="статистика-предсказательная.html"><a href="статистика-предсказательная.html"><i class="fa fa-check"></i><b>6</b> Статистика предсказательная</a>
+<ul>
+<li class="chapter" data-level="6.1" data-path="статистика-предсказательная.html"><a href="статистика-предсказательная.html#будущее-невозможно-предсказать-а-кто-утверждает-обратное---тот-дурак-или-мошенник.-или-нет"><i class="fa fa-check"></i><b>6.1</b> Будущее невозможно предсказать, а кто утверждает обратное - тот дурак или мошенник. Или нет?</a></li>
+<li class="chapter" data-level="6.2" data-path="статистика-предсказательная.html"><a href="статистика-предсказательная.html#экстраполяция"><i class="fa fa-check"></i><b>6.2</b> Экстраполяция</a></li>
+<li class="chapter" data-level="6.3" data-path="статистика-предсказательная.html"><a href="статистика-предсказательная.html#интерполяция"><i class="fa fa-check"></i><b>6.3</b> Интерполяция</a></li>
+</ul></li>
+<li class="chapter" data-level="" data-path="благодарности.html"><a href="благодарности.html"><i class="fa fa-check"></i>Благодарности</a></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/ANSozontov/r_lessobs" target="blank">Сделано на R, про ,R для изучающих R</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Начала статистики для биологов: Excel? Или лучше R? А может вообще ничего не выбирать, бросить науку и уйти жить в лес?</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="статистика-описательная" class="section level1 hasAnchor" number="4">
+<h1><span class="header-section-number">Глава 4</span> Статистика описательная<a href="статистика-описательная.html#статистика-описательная" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<div id="два-слова-о-совокупностях" class="section level2 hasAnchor" number="4.1">
+<h2><span class="header-section-number">4.1</span> Два слова о совокупностях<a href="статистика-описательная.html#два-слова-о-совокупностях" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Текст текст текст</p>
+</div>
+<div id="описываем-объем-и-размах" class="section level2 hasAnchor" number="4.2">
+<h2><span class="header-section-number">4.2</span> Описываем объем и размах<a href="статистика-описательная.html#описываем-объем-и-размах" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Текст текст текст</p>
+</div>
+<div id="описываем-варьирование" class="section level2 hasAnchor" number="4.3">
+<h2><span class="header-section-number">4.3</span> Описываем варьирование<a href="статистика-описательная.html#описываем-варьирование" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Текст текст текст</p>
+
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="r-а-также-rstudio.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="статистика-доказательная.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"whatsapp": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": "https://github.com/ANSozontov/r_lessobs/edit/main/04-describe.Rmd",
+"text": "Edit"
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": ["_main.pdf", "_main.epub"],
+"search": {
+"engine": "fuse",
+"options": null
+},
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,32 @@
+---
+title: "Начала статистики для биологов: Excel? Или лучше R? А может вообще ничего не выбирать, бросить науку и уйти жить в лес?"
+author: "Артём Созонтов"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [references.bib]
+# url: your book url like https://bookdown.org/yihui/bookdown
+cover-image: cover.png
+description: |
+  Первый учебник по статистике с сюжетом.
+link-citations: yes
+github-repo: ANSozontov/r_lessons
+---
+
+# Введение {.unnumbered}
+
+Первый учебник по статистике с сюжетом
+
+![](media/cover.png){width="50%"}
+
+## О чем эта книга {.unnumbered}
+
+Первый учебник по статистике с сюжетом
+
+## Как пользоваться этой книгой {.unnumbered}
+
+Первый учебник по статистике с сюжетом
+
+## Как появилась эта книга {.unnumbered}
+
+Первый учебник по статистике с сюжетом
