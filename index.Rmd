@@ -1,5 +1,5 @@
 ---
-title: "Диалоги о началах статистики для биологов"
+title: "Диалоги биологов о началах статистики"
 author: "Артём Созонтов"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
