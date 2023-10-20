@@ -13,6 +13,8 @@ link-citations: yes
 github-repo: ANSozontov/r_lessons
 ---
 
+<!--bookdown:favicon:media/racoon.png-->
+
 # Введение {.unnumbered}
 
 ## Первый учебник по статистике с сюжетом {-}

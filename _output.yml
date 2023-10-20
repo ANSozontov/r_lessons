@@ -1,6 +1,7 @@
 bookdown::gitbook:
   css: style.css
   config:
+    favicon: "media/racoon.ico"
     toc:
       before: |
         <li><a href="./">Диалоги биологов о началах статистики</a></li>

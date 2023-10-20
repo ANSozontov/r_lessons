@@ -1,5 +1,6 @@
 delete_merged_file: true
 output_dir: "docs"
+favicon: "media/racoon.ico"
 language:
   ui:
     chapter_name: "Глава "
